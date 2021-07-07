@@ -1,9 +1,12 @@
-from PySide6 import QtWidgets, QtCore
-from VideoCaptureWidget import CaptureDisplayWidget
+from PySide6 import QtWidgets, QtCore, QtGui
+from VideoCaptureWidget import VideoCaptureDisplayWidget
 from ControlPanel import ControlPanel
 
 
 class SplitterWindow(QtWidgets.QWidget):
+
+    # This is the widget were all the other widgets such as VideoCaptureDisplayWidget and ControlPanel are placed
+    # This also acts as a control class sending signals back and forth between two classes
 
     def __init__(self, *args, **kwargs):
         super(SplitterWindow, self).__init__(*args, **kwargs)
@@ -12,9 +15,12 @@ class SplitterWindow(QtWidgets.QWidget):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        self.video = CaptureDisplayWidget()
+        self.video = VideoCaptureDisplayWidget()
+        self.video.capturedImage.connect(self.displayCaptured)
+
         self.control_panel = ControlPanel()
         self.control_panel.capture.connect(self.switchCapturing)
+        self.control_panel.drawRect.connect(self.toggleDrawingRect)
         self.control_panel.setMaximumWidth(600)
 
         splitter.addWidget(self.video)
@@ -22,13 +28,24 @@ class SplitterWindow(QtWidgets.QWidget):
 
         self.layout().addWidget(splitter)
 
-    def switchCapturing(self, capture: bool):
+    def switchCapturing(self, capture: bool):  # starts and stops video captures
 
         if capture:
             self.video.start()
 
         else:
             self.video.stop()
+
+    def toggleDrawingRect(self, draw: bool):  # starts and stops drawing
+
+        if draw:
+            self.video.drawRect()
+
+        else:
+            self.video.stopDrawing()
+
+    def displayCaptured(self, capturedImage: QtGui.QImage):  # shows the capture image
+        self.control_panel.setCapturedImage(QtGui.QPixmap(capturedImage))
 
     def closeEvent(self, event) -> None:
         print("destroying...")

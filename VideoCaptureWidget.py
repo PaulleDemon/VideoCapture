@@ -2,23 +2,26 @@ import cv2
 from PySide6 import QtWidgets, QtCore, QtGui
 
 
-class CaptureDisplayWidget(QtWidgets.QWidget):
+class VideoCaptureDisplayWidget(QtWidgets.QWidget):
+
+    # Displays image frame by frame
+
+    capturedImage = QtCore.Signal(QtGui.QImage)  # emits the captured image
 
     def __init__(self, *args, **kwargs):
-        super(CaptureDisplayWidget, self).__init__(*args, **kwargs)
+        super(VideoCaptureDisplayWidget, self).__init__(*args, **kwargs)
 
         self.setLayout(QtWidgets.QVBoxLayout())
 
-        # self.img_label = QtWidgets.QLabel()
         self.img_label = DrawLabel()
-        self.img_label.startDraw()
+        self.img_label.drawingComplete.connect(self.extractImageFromRect)
         self.img_label.setText("Click capture to display")
         self.img_label.setScaledContents(True)
         
         self.layout().addWidget(self.img_label)
         self.capture = None
 
-    def updateImage(self, img):
+    def updateImage(self, img): # changes the current frame
         self.img_label.setPixmap(QtGui.QPixmap.fromImage(img))
 
     def start(self):
@@ -29,14 +32,28 @@ class CaptureDisplayWidget(QtWidgets.QWidget):
     def stop(self):
 
         if self.capture:
+
             self.capture.stop()
             self.capture.quit()
             self.capture = None
 
+    def drawRect(self):  # enables draw rect
+        self.img_label.startDraw()
 
-class Capture(QtCore.QThread):
+    def stopDrawing(self):  # stops drawing
+        self.img_label.stopDraw()
 
-    frameChanged = QtCore.Signal(QtGui.QImage)
+    def extractImageFromRect(self):  # emits the image inside the drawn rect
+        pixmap = self.img_label.pixmap()
+
+        image = pixmap.copy(self.img_label.rect()).toImage()
+        self.capturedImage.emit(image)
+        self.img_label.stopDraw()
+
+
+class Capture(QtCore.QThread): # capture video frame by frame
+
+    frameChanged = QtCore.Signal(QtGui.QImage)  # emits new image
         
     def run(self) -> None:
         self.cap = cv2.VideoCapture(0)
@@ -59,8 +76,9 @@ class Capture(QtCore.QThread):
         self.wait()
 
 
-class DrawLabel(QtWidgets.QLabel):
-    drawingComplete = QtCore.Signal()
+class DrawLabel(QtWidgets.QLabel):  # Enables user to draw over the image
+
+    drawingComplete = QtCore.Signal()  # emits when mouse released when drawing
 
     def __init__(self, *args, **kwargs):
         super(DrawLabel, self).__init__(*args, **kwargs)
@@ -79,10 +97,12 @@ class DrawLabel(QtWidgets.QLabel):
 
     def startDraw(self):
         self.draw = True
+        self.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
 
     def stopDraw(self):
         self.draw = False
         self._drawingRect = QtCore.QRectF()
+        self.setCursor(QtGui.QCursor())
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
 
