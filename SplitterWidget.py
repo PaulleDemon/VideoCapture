@@ -1,4 +1,5 @@
 from PySide6 import QtWidgets, QtCore, QtGui
+
 from VideoCaptureWidget import VideoCaptureDisplayWidget
 from ControlPanel import ControlPanel
 
@@ -15,13 +16,15 @@ class SplitterWindow(QtWidgets.QWidget):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        self.video = VideoCaptureDisplayWidget()
-        self.video.capturedImage.connect(self.displayCaptured)
-
         self.control_panel = ControlPanel()
         self.control_panel.capture.connect(self.switchCapturing)
         self.control_panel.drawRect.connect(self.toggleDrawingRect)
+        self.control_panel.cameraChanged.connect(self.changeCameraDevice)
         self.control_panel.setMaximumWidth(600)
+
+        self.video = VideoCaptureDisplayWidget()
+        self.video.capturedImage.connect(self.displayCaptured)
+        self.video.cameraFailed.connect(self.control_panel.resetCameraCapture)
 
         splitter.addWidget(self.video)
         splitter.addWidget(self.control_panel)
@@ -35,6 +38,10 @@ class SplitterWindow(QtWidgets.QWidget):
 
         else:
             self.video.stop()
+
+    def changeCameraDevice(self, index):
+        self.video.stop()
+        self.video.setCameraDevice(index)
 
     def toggleDrawingRect(self, draw: bool):  # starts and stops drawing
 

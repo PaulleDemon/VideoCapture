@@ -7,6 +7,7 @@ class VideoCaptureDisplayWidget(QtWidgets.QWidget):
     # Displays image frame by frame
 
     capturedImage = QtCore.Signal(QtGui.QImage)  # emits the captured image
+    cameraFailed = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super(VideoCaptureDisplayWidget, self).__init__(*args, **kwargs)
@@ -20,19 +21,27 @@ class VideoCaptureDisplayWidget(QtWidgets.QWidget):
         
         self.layout().addWidget(self.img_label)
         self.capture = None
+        self.cameraDevice = 0
 
     def updateImage(self, img): # changes the current frame
         self.img_label.setPixmap(QtGui.QPixmap.fromImage(img))
 
     def start(self):
-        self.capture = Capture()
+        self.img_label.setText("")
+        self.capture = Capture(self.cameraDevice)
         self.capture.frameChanged.connect(self.updateImage)
+        self.capture.cameraFailed.connect(self.cameraUnsuccessful)
         self.capture.start()
+
+    def cameraUnsuccessful(self):
+        self.stop()
+        self.cameraFailed.emit()
+        self.img_label.clear()
+        self.img_label.setText("Camera Failed")
 
     def stop(self):
 
         if self.capture:
-
             self.capture.stop()
             self.capture.quit()
             self.capture = None
@@ -46,18 +55,30 @@ class VideoCaptureDisplayWidget(QtWidgets.QWidget):
     def extractImageFromRect(self):  # emits the image inside the drawn rect
         pixmap = self.img_label.pixmap()
 
-        image = pixmap.copy(self.img_label.rect()).toImage()
+        image = pixmap.copy(self.img_label.drawingRect().toRect()).toImage()
         self.capturedImage.emit(image)
         self.img_label.stopDraw()
+
+    def setCameraDevice(self, index):
+        self.cameraDevice = index
 
 
 class Capture(QtCore.QThread): # capture video frame by frame
 
     frameChanged = QtCore.Signal(QtGui.QImage)  # emits new image
-        
+    cameraFailed = QtCore.Signal() # emits when the camera was unsuccessful
+
+    def __init__(self, cameraDevice=0, *args, **kwargs):
+        super(Capture, self).__init__(*args, **kwargs)
+        self.cameraDevice = cameraDevice
+
     def run(self) -> None:
-        self.cap = cv2.VideoCapture(0)
-        
+        self.cap = cv2.VideoCapture(self.cameraDevice)
+
+        if not self.cap.isOpened():
+            self.cameraFailed.emit()
+            return
+
         while not self.isInterruptionRequested():
 
             ret, frame = self.cap.read()
