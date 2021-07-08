@@ -13,6 +13,7 @@ class SplitterWindow(QtWidgets.QWidget):
         super(SplitterWindow, self).__init__(*args, **kwargs)
 
         self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 

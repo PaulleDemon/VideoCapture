@@ -30,7 +30,7 @@ class ControlPanel(QtWidgets.QWidget):
 
         self.captured_img_dimensions = QtWidgets.QLabel()
 
-        self.error_lbl = QtWidgets.QLabel()
+        self.error_lbl = QtWidgets.QLabel(objectName="ErrorLabel")
         self.error_lbl.setWordWrap(True)
 
         self.directory_edit = QtWidgets.QLineEdit()
@@ -118,6 +118,9 @@ class ControlPanel(QtWidgets.QWidget):
         if not os.path.isdir(directory):
             self.error_lbl.setText("Enter a valid directory")
             return
+
+        if not save_image:
+            self.error_lbl.setText("Enter a file name")
 
         path = os.path.join(directory, save_image)
 
